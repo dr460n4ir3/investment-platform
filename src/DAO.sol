@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "lib/openzeppelin/access/Ownable.sol";
-import "lib/openzeppelin/token/ERC20/IERC20.sol";
+import "lib/openzeppelin/contracts/access/Ownable.sol";
+import "lib/openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./RewardNFT.sol";
 
 contract DAO is Ownable {
@@ -29,11 +29,14 @@ contract DAO is Ownable {
     event Executed(uint256 proposalId, address recipient, uint256 amount);
     event Contribution(address contributor, uint256 amount);
 
-    constructor(IERC20 _governanceToken, RewardNFT _rewardNFT) {
+    constructor(IERC20 _governanceToken, RewardNFT _rewardNFT) Ownable(msg.sender) {
         governanceToken = _governanceToken;
         rewardNFT = _rewardNFT;
         proposalCounter = 0;
         totalPool = 0;
+
+        // Transfer ownership of RewardNFT to the DAO
+        rewardNFT.transferOwnership(address(this));
     }
 
     function createProposal(string memory _description, uint256 _amount, address payable _recipient) external {
@@ -74,16 +77,16 @@ contract DAO is Ownable {
         emit Contribution(msg.sender, msg.value);
     }
 
-    function claimRewards() external {
+    function claimRewards(uint256 tokenId) external {
+        // Burn the NFT
+        rewardNFT.burnReward(tokenId);
+
         uint256 contribution = contributions[msg.sender];
         require(contribution > 0, "No contributions to claim");
 
         uint256 reward = contribution; // Simple 1:1 reward for contribution
         contributions[msg.sender] = 0;
         totalPool -= contribution;
-
-        // Convert contribution to USDC and transfer (mock logic here)
-        // usdcToken.transfer(msg.sender, reward);
 
         // For simplicity, send ETH instead of USDC in this example
         payable(msg.sender).transfer(reward);
